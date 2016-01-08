@@ -209,8 +209,7 @@ target_link_libraries(move_constraint ${catkin_LIBRARIES})
 add_executable(move_grasp_simple src/move_grasp_simple.cpp)
 target_link_libraries(move_grasp_simple ${catkin_LIBRARIES})
 
-add_executable(move_pick_and_place src/move_pick_and_place.cpp)
-target_link_libraries(move_pick_and_place ${catkin_LIBRARIES})
+
 
 add_executable(move_pose_attached src/move_pose_attached.cpp)
 target_link_libraries(move_pose_attached ${catkin_LIBRARIES})
