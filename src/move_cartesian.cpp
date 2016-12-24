@@ -1,5 +1,8 @@
 #include <ros/ros.h>
 #include <moveit/move_group_interface/move_group.h>
+#include <moveit/robot_trajectory/robot_trajectory.h>
+#include <moveit/trajectory_processing/iterative_time_parameterization.h>
+
 int main(int argc, char **argv)
 {
   ros::init(argc, argv, "lesson_move_group");
@@ -10,15 +13,63 @@ int main(int argc, char **argv)
   
   moveit::planning_interface::MoveGroup group("manipulator");
   group.setPlannerId("RRTkConfigDefault");
-  
- Eigen::Affine3d pose = Eigen::Translation3d(0.028, 0.793, 0.390)
-                         * Eigen::Quaterniond(-0.014, 0.733, 0.680, -0.010);
-  group.setPoseTarget(pose);
-  group.move();
+  group.setStartStateToCurrentState ();
 
-  sleep(2.0);
-  Eigen::Affine3d pose2 = Eigen::Translation3d(-0.506, 0.000, 0.532)
-                         * Eigen::Quaterniond(0.000,-0.644, 0.000, 0.765);
-  group.setPoseTarget(pose2);
-  group.move();
+  robot_state::RobotState start_state(*group.getCurrentState());
+  geometry_msgs::Pose start_pose2;
+  start_pose2.orientation.w = 1.0;
+  start_pose2.position.x = 0.55;
+  start_pose2.position.y = -0.05;
+  start_pose2.position.z = 0.8;
+
+  std::vector<geometry_msgs::Pose> waypoints;
+
+  geometry_msgs::Pose target_pose3 = start_pose2;
+  target_pose3.position.x += 0.2;
+  target_pose3.position.z += 0.2;
+  waypoints.push_back(target_pose3);  // up and out
+
+  target_pose3.position.y -= 0.4;
+  waypoints.push_back(target_pose3);  // left
+
+  target_pose3.position.z -= 0.05;
+  target_pose3.position.y += 0.2;
+  target_pose3.position.x -= 0.2;
+  waypoints.push_back(target_pose3);  // down and right (back to start)
+
+  moveit_msgs::RobotTrajectory trajectory_msg;
+  group.setPlanningTime(10.0);
+ 
+  double fraction = group.computeCartesianPath(waypoints,
+                                               0.01,  // eef_step
+                                               0.0,   // jump_threshold
+                                               trajectory_msg, false);
+
+  // The trajectory needs to be modified so it will include velocities as well.
+  // First to create a RobotTrajectory object
+  robot_trajectory::RobotTrajectory rt(group.getCurrentState()->getRobotModel(), "manipulator");
+
+  // Second get a RobotTrajectory from trajectory
+  rt.setRobotTrajectoryMsg(*group.getCurrentState(), trajectory_msg);
+ 
+  // Thrid create a IterativeParabolicTimeParameterization object
+  trajectory_processing::IterativeParabolicTimeParameterization iptp;
+
+  // Fourth compute computeTimeStamps
+  bool success = iptp.computeTimeStamps(rt);
+  ROS_INFO("Computed time stamp %s",success?"SUCCEDED":"FAILED");
+
+  // Get RobotTrajectory_msg from RobotTrajectory
+  rt.getRobotTrajectoryMsg(trajectory_msg);
+
+  // Finally plan and execute the trajectory
+  moveit::planning_interface::MoveGroup::Plan plan;
+  bool success1 = group.plan(plan);
+  plan.trajectory_ = trajectory_msg;
+  ROS_INFO("Visualizing plan 4 (cartesian path) (%.2f%% acheived)",fraction * 100.0);   
+  sleep(5.0);
+  group.execute(plan);
+
+  
+  
 }
