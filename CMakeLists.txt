@@ -219,3 +219,9 @@ target_link_libraries(move_grasp_back ${catkin_LIBRARIES})
 
 add_executable(move_pose_attached src/move_pose_attached.cpp)
 target_link_libraries(move_pose_attached ${catkin_LIBRARIES})
+
+add_executable(move_head_task src/move_head_task.cpp)
+target_link_libraries(move_head_task ${catkin_LIBRARIES})
+
+add_executable(move_arms_task src/move_arms_task.cpp)
+target_link_libraries(move_arms_task ${catkin_LIBRARIES})
